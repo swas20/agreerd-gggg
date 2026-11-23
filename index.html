@@ -45,7 +45,7 @@ body{
 .nav-buttons button:hover{ background:#00897b; }
 .container{
     width:98%;
-    max-width:1600px;
+    max-width:1800px;
     margin:0 auto;
 }
 .page{ display:none; }
@@ -144,19 +144,24 @@ body{
     color:#6b7280;
 }
 
-/* ALL MASTER DASHBOARDS STACK */
+/* HORIZONTAL MULTI-MASTER GRID */
 .masters-stack{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(560px, 1fr));
+    gap:16px;
+    align-items:start;
+}
+.masters-empty-span{
+    grid-column:1 / -1;
 }
 .master-section{
     background:#f8fafc;
     border:1px solid #cbd5e1;
-    border-left:5px solid #00695c;
+    border-top:5px solid #00695c;
     border-radius:12px;
     padding:14px;
     box-shadow:0 3px 10px rgba(0,0,0,.07);
+    min-width:0;
 }
 .master-section-header{
     display:flex;
@@ -172,7 +177,7 @@ body{
     display:flex;
     align-items:center;
     gap:8px;
-    font-size:16px;
+    font-size:15px;
     font-weight:bold;
     color:#00695c;
 }
@@ -187,29 +192,31 @@ body{
 .master-meta{
     font-size:11px;
     color:#6b7280;
+    word-break:break-all;
 }
 
-/* TOP GRID 5 COLS */
+/* MASTER METRIC CARDS GRID */
 .grid{
     display:grid;
-    grid-template-columns:repeat(5,1fr);
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
     gap:10px;
     margin-bottom:12px;
 }
 .card{
     background:white;
     border-radius:10px;
-    padding:12px;
+    padding:11px;
     box-shadow:0 2px 8px rgba(0,0,0,.08);
+    min-width:0;
 }
 .card h3{ color:#00695c; margin-bottom:6px; font-size:13px; }
-.big-value{ font-size:20px; font-weight:bold; margin:4px 0; }
+.big-value{ font-size:18px; font-weight:bold; margin:4px 0; }
 .small{ font-size:11px; color:#6b7280; }
-.icon{ font-size:15px; font-weight:bold; color:#00695c; }
-.tank-box{ display:flex; align-items:center; gap:12px; }
+.icon{ font-size:13px; font-weight:bold; color:#00695c; }
+.tank-box{ display:flex; align-items:center; gap:10px; }
 .tank{
-    width:54px;
-    height:88px;
+    width:46px;
+    height:78px;
     border:3px solid #37474f;
     border-radius:6px 6px 14px 14px;
     position:relative;
@@ -224,10 +231,10 @@ body{
     background:#2196f3;
     transition:height .7s;
 }
-.tank-percent{ font-size:19px; font-weight:bold; }
+.tank-percent{ font-size:17px; font-weight:bold; }
 
 /* PUMP */
-.pump-status{ display:inline-block; padding:5px 10px; border-radius:20px; font-weight:bold; font-size:11px; }
+.pump-status{ display:inline-block; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:11px; }
 .pump-on{ background:#c8e6c9; color:#1b5e20; }
 .pump-off{ background:#ffcdd2; color:#b71c1c; }
 button{ border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px; }
@@ -248,7 +255,7 @@ button:hover{ opacity:.85; }
 }
 .nodes-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(285px,1fr));
+    grid-template-columns:repeat(auto-fit, minmax(235px, 1fr));
     gap:10px;
 }
 .node-card{
@@ -257,6 +264,7 @@ button:hover{ opacity:.85; }
     padding:12px;
     box-shadow:0 2px 8px rgba(0,0,0,.1);
     border-top:4px solid #00695c;
+    min-width:0;
 }
 .node-title{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 .node-title h2{ color:#00695c; font-size:14px; }
@@ -294,12 +302,9 @@ button:hover{ opacity:.85; }
 .info-card h2{ color:#00695c; margin-bottom:8px; font-size:16px; }
 footer{ background:#263238; color:white; text-align:center; padding:12px; font-size:12px; }
 
-@media(max-width:1200px){
-    .grid{ grid-template-columns:repeat(3,1fr); }
-}
-@media(max-width:700px){
+@media(max-width:768px){
+    .masters-stack{ grid-template-columns:1fr; }
     .navbar{ flex-direction:column; height:auto; gap:8px; padding:10px; }
-    .grid{ grid-template-columns:1fr 1fr; }
 }
 </style>
 </head>
@@ -339,7 +344,7 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 
 <section id="dashboardPage" class="page">
 <div class="dashboard-header">
-<div><h1>AQUASENSE Dashboard</h1><p class="small">Real-time multi-master irrigation monitoring and control</p></div>
+<div><h1>AQUASENSE Dashboard</h1><p class="small">Real-time horizontal multi-master irrigation monitoring and control</p></div>
 <div class="header-right">
 <div class="connection"><div id="mqttDot" class="dot"></div><span id="mqttStatus">MQTT Disconnected</span></div>
 </div>
@@ -351,7 +356,7 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 </div>
 
 <div id="allMastersContainer" class="masters-stack">
-<div class="card"><h3>Waiting for Master Nodes</h3><p class="small">Listening on <code>aquasense/+/live</code> for active master dashboards...</p></div>
+<div class="card masters-empty-span"><h3>Waiting for Master Nodes</h3><p class="small">Listening on <code>aquasense/+/live</code> for active master dashboards...</p></div>
 </div>
 </section>
 
@@ -485,7 +490,7 @@ return onlineList;
 function scrollToMaster(masterId){
 const el = document.getElementById("masterSection_" + masterId);
 if(el){
-el.scrollIntoView({ behavior: "smooth", block: "start" });
+el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
 }
 }
 
@@ -537,7 +542,7 @@ listEl.appendChild(chip);
 
 if(!container) return;
 if(onlineList.length === 0){
-container.innerHTML = `<div class="card"><h3>No Online Master Nodes</h3><p class="small">Waiting for active master nodes publishing to <code>aquasense/+/live</code>...</p></div>`;
+container.innerHTML = `<div class="card masters-empty-span"><h3>No Online Master Nodes</h3><p class="small">Waiting for active master nodes publishing to <code>aquasense/+/live</code>...</p></div>`;
 return;
 }
 
@@ -574,14 +579,14 @@ section.innerHTML = `
     <span>📡 Master Node: ${escapeHTML(masterId)}</span>
     <span class="master-badge">ONLINE</span>
   </div>
-  <div class="master-meta">Topic: <code>${escapeHTML(entry.topic)}</code> • Updated ${secondsAgo}s ago</div>
+  <div class="master-meta">Topic: <code>${escapeHTML(entry.topic)}</code> • ${secondsAgo}s ago</div>
 </div>
 
 <div class="grid">
   <div class="card">
-    <div class="icon">💧 Tank Water Level</div>
+    <div class="icon">💧 Tank Level</div>
     <div class="big-value">${levelPercent.toFixed(1)} %</div>
-    <div class="small">Height: ${levelCm.toFixed(1)} cm | Dist: ${distance.toFixed(1)} cm</div>
+    <div class="small">H: ${levelCm.toFixed(1)}cm | D: ${distance.toFixed(1)}cm</div>
   </div>
 
   <div class="card">
@@ -595,28 +600,28 @@ section.innerHTML = `
 
   <div class="card">
     <div class="icon">Master Flow</div>
-    <div class="big-value">${masterFlow.toFixed(2)} L/min</div>
+    <div class="big-value">${masterFlow.toFixed(2)} L/m</div>
     <div class="small">Total: ${masterTotal.toFixed(2)} L</div>
   </div>
 
   <div class="card">
-    <div class="icon">Tank Capacity</div>
+    <div class="icon">Tank Height</div>
     <div class="big-value">${escapeHTML(tankHeightText)}</div>
-    <div class="small">Configured tank height</div>
+    <div class="small">Configured height</div>
   </div>
 
   <div class="card">
     <h3>🛢 Tank Visual</h3>
     <div class="tank-box">
       <div class="tank"><div class="water" style="height:${levelPercent}%"></div></div>
-      <div><div class="tank-percent">${levelPercent.toFixed(1)}%</div><p class="small">Real-time ultrasonic</p></div>
+      <div><div class="tank-percent">${levelPercent.toFixed(1)}%</div><p class="small">Ultrasonic</p></div>
     </div>
   </div>
 </div>
 
 <div class="section-title">
   <h2>Customer Nodes (${escapeHTML(masterId)})</h2>
-  <div><span class="small">Total Nodes: </span><strong>${nodes.length}</strong></div>
+  <div><span class="small">Total: </span><strong>${nodes.length}</strong></div>
 </div>
 <div class="nodes-grid"></div>
 `;
@@ -679,7 +684,7 @@ return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&g
 function escapeJS(value){
 return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 }
-window.addEventListener("load", function(){ console.log("AQUASENSE multi-master dashboard loaded."); });
+window.addEventListener("load", function(){ console.log("AQUASENSE horizontal multi-master dashboard loaded."); });
 </script>
 </body>
 </html>
