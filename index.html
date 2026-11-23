@@ -354,6 +354,71 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
     .navbar{ flex-direction:column; height:auto; gap:8px; padding:10px; }
     .search-box{ max-width:100%; }
 }
+
+/* MASTER NODE SCOPE SELECTOR + POPUP */
+.master-scope-control{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.master-scope-control label{
+    font-size:12px;
+    font-weight:bold;
+    color:#00695c;
+}
+.master-scope-control select{
+    min-width:190px;
+    max-width:100%;
+    padding:8px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+    background:#fff;
+    color:#1f2937;
+    font-size:12px;
+}
+.master-popup{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    background:rgba(15,23,42,.58);
+    padding:24px;
+    overflow:auto;
+}
+.master-popup.open{ display:block; }
+.master-popup-panel{
+    max-width:1500px;
+    width:100%;
+    margin:20px auto;
+    background:#f8fafc;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 15px 50px rgba(0,0,0,.3);
+}
+.master-popup-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.master-popup-header h2{ color:#00695c; font-size:18px; }
+.master-popup-close{
+    background:#e2e8f0;
+    color:#1f2937;
+    padding:8px 12px;
+}
+#masterPopupContent .master-section{
+    width:100%;
+    max-width:none;
+}
+@media(max-width:768px){
+    .master-popup{ padding:8px; }
+    .master-popup-panel{ margin:8px auto; padding:12px; }
+    .master-scope-control select{ min-width:160px; }
+}
+
 </style>
 </head>
 <body>
@@ -401,6 +466,12 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 <div class="master-nodes-bar">
 <div class="master-nodes-label">📡 Online Master Nodes (<span id="onlineMasterCount">0</span>)<span id="filteredCountLabel" class="small"></span>:</div>
 <div id="onlineMasterNodesList" class="master-nodes-list"><span class="master-empty">Waiting for online master nodes...</span></div>
+<div class="master-scope-control">
+  <label for="masterScopeSelect">Scope</label>
+  <select id="masterScopeSelect" onchange="openSelectedMaster()">
+    <option value="">Select master node...</option>
+  </select>
+</div>
 <div class="search-box">
   <span style="font-size:12px;">🔍</span>
   <input type="text" id="masterSearchInput" placeholder="Search master or customer node..." oninput="handleMasterSearch()">
@@ -412,6 +483,16 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 <div class="card masters-empty-span"><h3>Waiting for Master Nodes</h3><p class="small">Listening on <code>aquasense/+/live</code> for active master dashboards...</p></div>
 </div>
 </section>
+
+<div id="masterPopup" class="master-popup" role="dialog" aria-modal="true" aria-labelledby="masterPopupTitle" onclick="closeMasterPopupOnBackdrop(event)">
+  <div class="master-popup-panel">
+    <div class="master-popup-header">
+      <h2 id="masterPopupTitle">Master Node Dashboard</h2>
+      <button type="button" class="master-popup-close" onclick="closeMasterPopup()">Close ✕</button>
+    </div>
+    <div id="masterPopupContent"></div>
+  </div>
+</div>
 
 <section id="aboutPage" class="page">
 <div class="hero"><h1>About AQUASENSE</h1><p>A smart water distribution system and monitoring platform designed to improve water management using automation, sensors, LoRa communication and cloud connectivity.</p></div>
@@ -600,6 +681,57 @@ console.log("COMMAND SENT TO", targetTopic, ":", payload);
 }
 function pumpCommand(masterId, state){ sendCommand(masterId, { pump:state }); }
 function valveCommand(masterId, node, action){ sendCommand(masterId, { node:String(node), action:action }); }
+
+function updateMasterScopeOptions(onlineList){
+  const select = document.getElementById("masterScopeSelect");
+  if(!select) return;
+  const previousValue = select.value;
+  select.innerHTML = '<option value="">Select master node...</option>';
+  onlineList.forEach(entry => {
+    const option = document.createElement("option");
+    option.value = entry.id;
+    option.textContent = entry.id;
+    select.appendChild(option);
+  });
+  if(onlineList.some(entry => entry.id === previousValue)){
+    select.value = previousValue;
+  } else {
+    select.value = "";
+    closeMasterPopup();
+  }
+}
+
+function openSelectedMaster(){
+  const select = document.getElementById("masterScopeSelect");
+  const masterId = select ? select.value : "";
+  if(!masterId) return;
+  const source = document.getElementById("masterSection_" + masterId);
+  const content = document.getElementById("masterPopupContent");
+  if(!source || !content) return;
+  content.innerHTML = "";
+  const copy = source.cloneNode(true);
+  copy.removeAttribute("id");
+  content.appendChild(copy);
+  document.getElementById("masterPopupTitle").textContent = "Master Node: " + masterId;
+  document.getElementById("masterPopup").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeMasterPopup(){
+  const popup = document.getElementById("masterPopup");
+  if(popup) popup.classList.remove("open");
+  const content = document.getElementById("masterPopupContent");
+  if(content) content.innerHTML = "";
+  document.body.style.overflow = "";
+}
+
+function closeMasterPopupOnBackdrop(event){
+  if(event.target && event.target.id === "masterPopup") closeMasterPopup();
+}
+
+document.addEventListener("keydown", function(event){
+  if(event.key === "Escape") closeMasterPopup();
+});
 
 function renderAllMasterDashboards(){
 const onlineList = getOnlineMasterNodes();
