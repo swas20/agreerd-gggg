@@ -87,7 +87,7 @@ body{
 .dot{ width:10px; height:10px; border-radius:50%; background:#f44336; }
 .dot.connected{ background:#00c853; }
 
-/* ONLINE MASTER NODES QUICK-JUMP BAR */
+/* ONLINE MASTER NODES QUICK-JUMP & SEARCH BAR */
 .master-nodes-bar{
     background:white;
     border-radius:10px;
@@ -114,6 +114,7 @@ body{
     gap:6px;
     flex-wrap:wrap;
     flex:1;
+    min-width:180px;
 }
 .master-chip{
     display:inline-flex;
@@ -142,6 +143,52 @@ body{
 .master-empty{
     font-size:11px;
     color:#6b7280;
+}
+
+/* SEARCH BOX */
+.search-box{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#f1f5f9;
+    border:1px solid #cbd5e1;
+    border-radius:20px;
+    padding:4px 10px;
+    min-width:250px;
+    max-width:340px;
+    width:100%;
+}
+.search-box:focus-within{
+    border-color:#00695c;
+    background:white;
+    box-shadow:0 0 0 2px rgba(0,105,92,.15);
+}
+.search-box input{
+    border:none;
+    background:transparent;
+    outline:none;
+    font-size:12px;
+    color:#1f2937;
+    width:100%;
+}
+.search-clear-btn{
+    background:#cbd5e1;
+    color:#334155;
+    border:none;
+    border-radius:50%;
+    width:18px;
+    height:18px;
+    padding:0;
+    font-size:11px;
+    line-height:18px;
+    text-align:center;
+    cursor:pointer;
+    display:none;
+    flex-shrink:0;
+}
+.search-clear-btn:hover{
+    background:#94a3b8;
+    color:white;
 }
 
 /* HORIZONTAL MULTI-MASTER GRID */
@@ -305,6 +352,7 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 @media(max-width:768px){
     .masters-stack{ grid-template-columns:1fr; }
     .navbar{ flex-direction:column; height:auto; gap:8px; padding:10px; }
+    .search-box{ max-width:100%; }
 }
 </style>
 </head>
@@ -351,8 +399,13 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 </div>
 
 <div class="master-nodes-bar">
-<div class="master-nodes-label">📡 Online Master Nodes (<span id="onlineMasterCount">0</span>):</div>
+<div class="master-nodes-label">📡 Online Master Nodes (<span id="onlineMasterCount">0</span>)<span id="filteredCountLabel" class="small"></span>:</div>
 <div id="onlineMasterNodesList" class="master-nodes-list"><span class="master-empty">Waiting for online master nodes...</span></div>
+<div class="search-box">
+  <span style="font-size:12px;">🔍</span>
+  <input type="text" id="masterSearchInput" placeholder="Search master or customer node..." oninput="handleMasterSearch()">
+  <button type="button" id="clearSearchBtn" class="search-clear-btn" title="Clear search" onclick="clearMasterSearch()">✕</button>
+</div>
 </div>
 
 <div id="allMastersContainer" class="masters-stack">
@@ -380,6 +433,7 @@ const MQTT_ALL_LIVE_TOPIC = "aquasense/+/live";
 const MASTER_ONLINE_TIMEOUT_MS = 30000;
 
 const masterNodes = new Map();
+let masterSearchQuery = "";
 let onlineMastersTimer = null;
 let mqttClient = null;
 
@@ -487,6 +541,37 @@ onlineList.sort((a, b) => a.id.localeCompare(b.id));
 return onlineList;
 }
 
+function matchesSearchFilter(entry, query){
+if(!query) return true;
+const q = query.toLowerCase();
+if(entry.id.toLowerCase().includes(q)) return true;
+if(entry.topic && entry.topic.toLowerCase().includes(q)) return true;
+const nodes = entry.data && Array.isArray(entry.data.nodes) ? entry.data.nodes : [];
+return nodes.some(n => {
+const nodeId = String(n.id || "").toLowerCase();
+return nodeId.includes(q) || ("node " + nodeId).includes(q);
+});
+}
+
+function handleMasterSearch(){
+const input = document.getElementById("masterSearchInput");
+const clearBtn = document.getElementById("clearSearchBtn");
+masterSearchQuery = input ? input.value.trim() : "";
+if(clearBtn){
+clearBtn.style.display = masterSearchQuery.length > 0 ? "inline-block" : "none";
+}
+renderAllMasterDashboards();
+}
+
+function clearMasterSearch(){
+const input = document.getElementById("masterSearchInput");
+const clearBtn = document.getElementById("clearSearchBtn");
+if(input) input.value = "";
+masterSearchQuery = "";
+if(clearBtn) clearBtn.style.display = "none";
+renderAllMasterDashboards();
+}
+
 function scrollToMaster(masterId){
 const el = document.getElementById("masterSection_" + masterId);
 if(el){
@@ -518,18 +603,28 @@ function valveCommand(masterId, node, action){ sendCommand(masterId, { node:Stri
 
 function renderAllMasterDashboards(){
 const onlineList = getOnlineMasterNodes();
+const filteredList = onlineList.filter(entry => matchesSearchFilter(entry, masterSearchQuery));
+
 const countEl = document.getElementById("onlineMasterCount");
+const filteredLabelEl = document.getElementById("filteredCountLabel");
 const listEl = document.getElementById("onlineMasterNodesList");
 const container = document.getElementById("allMastersContainer");
 
 if(countEl) countEl.innerText = onlineList.length;
+if(filteredLabelEl){
+filteredLabelEl.innerText = masterSearchQuery
+? ` • Showing ${filteredList.length} of ${onlineList.length}`
+: "";
+}
 
 if(listEl){
 if(onlineList.length === 0){
 listEl.innerHTML = `<span class="master-empty">No online master nodes detected yet.</span>`;
+} else if(filteredList.length === 0){
+listEl.innerHTML = `<span class="master-empty">No master matches "${escapeHTML(masterSearchQuery)}".</span>`;
 } else {
 listEl.innerHTML = "";
-onlineList.forEach(entry => {
+filteredList.forEach(entry => {
 const chip = document.createElement("button");
 chip.type = "button";
 chip.className = "master-chip";
@@ -546,8 +641,18 @@ container.innerHTML = `<div class="card masters-empty-span"><h3>No Online Master
 return;
 }
 
+if(filteredList.length === 0){
+container.innerHTML = `
+<div class="card masters-empty-span">
+  <h3>No Matching Master Dashboard</h3>
+  <p class="small" style="margin-bottom:8px;">No online master or customer node matched "<strong>${escapeHTML(masterSearchQuery)}</strong>".</p>
+  <button type="button" class="btn-blue" onclick="clearMasterSearch()">Show All Masters (${onlineList.length})</button>
+</div>`;
+return;
+}
+
 container.innerHTML = "";
-onlineList.forEach(entry => {
+filteredList.forEach(entry => {
 const masterId = entry.id;
 const data = entry.data || {};
 const secondsAgo = Math.max(0, Math.round((Date.now() - entry.lastSeen) / 1000));
@@ -681,10 +786,4 @@ return "CLOSED";
 function escapeHTML(value){
 return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
-function escapeJS(value){
-return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-}
-window.addEventListener("load", function(){ console.log("AQUASENSE horizontal multi-master dashboard loaded."); });
-</script>
-</body>
-</html>
+function
